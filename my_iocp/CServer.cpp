@@ -23,7 +23,7 @@ unsigned _stdcall ThreadPrc(PVOID Param)
 	HANDLE ComlPort = pServer->m_IoCompletionPort;
 	while (true)
 	{
-		DWORD dwClientContent = 0;	// 单数据句柄
+		unsigned long long ullClientContent = 0;	// 单数据句柄
 		pPER_SOCKET_CONTEXT lpPerSocketContext = NULL;
 		pPER_IO_CONTEXT lpPerIoContext = NULL;				// 单IO句柄
 		DWORD dwBytesTransfered = 0;
@@ -34,17 +34,17 @@ unsigned _stdcall ThreadPrc(PVOID Param)
 		dwBytesTransfered = 0;
 		char newBuf[MAX_BASEMSG_LEN] = {0};
 		// 线程不断地从Queue中拿已完成的io操作，queue由Windows自动进行维护
-		bRet = GetQueuedCompletionStatus(ComlPort, &dwBytesTransfered, &dwClientContent, (LPOVERLAPPED*)&lpPerIoContext, INFINITE);
+		bRet = GetQueuedCompletionStatus(ComlPort, &dwBytesTransfered, (unsigned long long*)&ullClientContent, (LPOVERLAPPED*)&lpPerIoContext, INFINITE);
 		if (bRet)
 		{
-			if (NULL == dwClientContent)
+			if (NULL == ullClientContent)
 			{
 				lpPerSocketContext = (pPER_SOCKET_CONTEXT)GlobalAlloc(GPTR, sizeof(PER_SOCKET_CONTEXT));
 				lpPerSocketContext->pIOContent = lpPerIoContext;
 			}
 			else
 			{
-				lpPerSocketContext = (pPER_SOCKET_CONTEXT)dwClientContent;
+				lpPerSocketContext = (pPER_SOCKET_CONTEXT)ullClientContent;
 			}
 		}
 		else
@@ -229,7 +229,7 @@ int CServer::OnAcceptClient(pPER_SOCKET_CONTEXT lpPerSocketContext)
 	lpPerSocketContext->Socket = lpPerSocketContext->pIOContent->SockAccept;
 
 	// 关联新连接的socket与完成端口
-	CreateIoCompletionPort((HANDLE)lpPerSocketContext->Socket, m_IoCompletionPort, (DWORD)lpPerSocketContext, 0);
+	CreateIoCompletionPort((HANDLE)lpPerSocketContext->Socket, m_IoCompletionPort, (ULONG_PTR)lpPerSocketContext, 0);
 	//memset(&(lpPerSocketContext->ioContent.Overlapped), 0, sizeof(OVERLAPPED));
 	lpPerSocketContext->pIOContent->OpeType = OPE_RECV;			// 客户端发来连接请求后，开始接收客户端数据
 	// 设置WSABUF结构
